@@ -30,32 +30,39 @@ cd ~/.local/text-refiner
 ./setup.sh
 ```
 
-`setup.sh` creates a Python virtualenv at `~/.text-refiner/env`,
-compiles the Swift daemon to `~/.text-refiner/TextRefinerNative`, signs
-it ad-hoc with a stable code identifier, writes the LaunchAgent plist,
-and starts the daemon.
+`setup.sh` does five things:
 
-Then store your API key in the macOS Keychain:
+1. Creates a Python virtualenv at `~/.text-refiner/env` and installs the
+   helper's dependencies.
+2. Compiles `native/*.swift` into a real macOS app bundle.
+3. Signs the bundle ad-hoc with a stable code identifier
+   (`com.textrefiner.app`) so future rebuilds keep their TCC permissions.
+4. Installs the bundle to **`/Applications/TextRefiner.app`** (falls back
+   to `~/Applications/TextRefiner.app` if `/Applications` requires elevated
+   privileges).
+5. Registers a LaunchAgent so the daemon starts at login and respawns if
+   you quit it.
 
-```sh
-~/.text-refiner/env/bin/python3 - <<'PY'
-import keyring
-keyring.set_password("text-refiner", "api_key", "sk-ant-...your key...")
-PY
-```
+After install you'll see a small **TR** icon in the top-right of your menu
+bar.
 
 ## Grant permissions
 
-The daemon needs two macOS permissions. Open
-**System Settings → Privacy & Security**:
+The app needs two macOS permissions. Open **System Settings → Privacy &
+Security** and look for **`Text Refiner`** in:
 
-1. **Accessibility** → click **+** → press `⌘⇧G` → paste
-   `/Users/<you>/.text-refiner/TextRefinerNative` → add it → toggle ON.
-2. **Input Monitoring** → repeat the same steps.
+1. **Accessibility** → toggle ON.
+2. **Input Monitoring** → toggle ON.
 
-If the daemon log says `Accessibility trust: NO`, toggle the permission
-off and back on again — macOS sometimes leaves the toggle visually ON
-while the underlying permission has been invalidated.
+If you don't see `Text Refiner` in the list yet, double-tap **Right
+Option** once and macOS will prompt you to add it.
+
+## Add your API key
+
+Click the **TR** menu bar icon → **Preferences…** → paste your Anthropic
+key into the API Key field → **Save key**. The key is stored in the macOS
+Keychain (service `text-refiner`, account `anthropic`), never written to
+disk in plain text.
 
 ## Use it
 
@@ -116,16 +123,26 @@ Haiku 4.5 vs Sonnet 4.6 outputs across all modes, and
 [`docs/github-app-spec.md`](docs/github-app-spec.md) for the spec of
 where this is headed (configuration UI, multi-provider support).
 
-## Uninstall
+## Restart / quit
+
+The TR menu bar icon's **Quit Text Refiner** stops the process; the
+LaunchAgent respawns it within seconds. To stop it permanently, run:
 
 ```sh
 launchctl bootout "gui/$(id -u)" ~/Library/LaunchAgents/com.textrefiner.plist
-rm ~/Library/LaunchAgents/com.textrefiner.plist
+```
+
+To open it again after that, double-click **`Text Refiner`** in
+`/Applications` (or `~/Applications` if it landed there).
+
+## Uninstall
+
+```sh
+launchctl bootout "gui/$(id -u)" ~/Library/LaunchAgents/com.textrefiner.plist 2>/dev/null
+rm -f ~/Library/LaunchAgents/com.textrefiner.plist
+rm -rf /Applications/TextRefiner.app ~/Applications/TextRefiner.app
 rm -rf ~/.text-refiner
-~/.text-refiner/env/bin/python3 - <<'PY'
-import keyring
-keyring.delete_password("text-refiner", "api_key")
-PY
+security delete-generic-password -s text-refiner -a anthropic
 ```
 
 ## License

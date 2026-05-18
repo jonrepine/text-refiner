@@ -126,11 +126,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
+// When running inside a real .app bundle (the production install at
+// /Applications/TextRefiner.app), all resources live in Contents/Resources.
+// When running as a bare CLI for dev (`./TextRefinerNative <repo> <python>`),
+// the two arguments override.
 let args = CommandLine.arguments
-let appDir = args.count > 1 ? args[1] : FileManager.default.currentDirectoryPath
-let pythonPath = args.count > 2 ? args[2] : "\(NSHomeDirectory())/.text-refiner/env/bin/python3"
-let scriptPath = "\(appDir)/refiner_cli.py"
+let appDir: String
+let pythonPath: String
+if let resources = Bundle.main.resourcePath,
+   FileManager.default.fileExists(atPath: "\(resources)/refiner_cli.py") {
+    appDir = resources
+    pythonPath = "\(NSHomeDirectory())/.text-refiner/env/bin/python3"
+} else if args.count > 2 {
+    appDir = args[1]
+    pythonPath = args[2]
+} else {
+    appDir = FileManager.default.currentDirectoryPath
+    pythonPath = "\(NSHomeDirectory())/.text-refiner/env/bin/python3"
+}
 
+// Singleton check: macOS Launch Services normally activates the existing
+// instance instead of spawning a duplicate, but launchd + a manual launch
+// can race. If another copy of this bundle is already running, exit quietly.
+if let bundleId = Bundle.main.bundleIdentifier {
+    let others = NSWorkspace.shared.runningApplications.filter {
+        $0.bundleIdentifier == bundleId && $0.processIdentifier != getpid()
+    }
+    if !others.isEmpty {
+        log("Another instance is already running, exiting.")
+        exit(0)
+    }
+}
+
+let scriptPath = "\(appDir)/refiner_cli.py"
 let helper = RefinerHelper(pythonPath: pythonPath, scriptPath: scriptPath)
 let app = NSApplication.shared
 let delegate = AppDelegate(helper: helper, appDir: appDir)

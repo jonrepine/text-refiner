@@ -8,8 +8,6 @@
     <key>ProgramArguments</key>
     <array>
         <string>__PROGRAM__</string>
-        <string>__APP_DIR__</string>
-        <string>__PYTHON__</string>
     </array>
 
     <key>RunAtLoad</key>
