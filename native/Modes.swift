@@ -1,26 +1,82 @@
 import Foundation
 
-/// One row in the picker. The `isCustom` and `isCancel` flags drive the
-/// special-case behavior in the controller so we never key off magic IDs.
-struct Mode {
+/// One row in the picker. Loaded at runtime from `~/.text-refiner/modes.json`
+/// (with defaults at `<repo>/config/modes.default.json`). Editable in the
+/// preferences window.
+struct Mode: Codable {
     let id: Int
     let name: String
     let detail: String
-    var isCustom: Bool = false
-    var isCancel: Bool = false
+    let isCustom: Bool
+    let isCancel: Bool
+    let locked: Bool
+    let prompt: String
+
+    init(
+        id: Int,
+        name: String,
+        detail: String,
+        isCustom: Bool = false,
+        isCancel: Bool = false,
+        locked: Bool = false,
+        prompt: String = ""
+    ) {
+        self.id = id
+        self.name = name
+        self.detail = detail
+        self.isCustom = isCustom
+        self.isCancel = isCancel
+        self.locked = locked
+        self.prompt = prompt
+    }
 }
 
-/// The picker is rendered in the order below. Digit shortcuts come from `id`,
-/// so each id has to be a single character in `0`-`9`.
-let modes: [Mode] = [
-    Mode(id: 1, name: "Spelling only",  detail: "spelling fixes, nothing else"),
-    Mode(id: 2, name: "Grammar",        detail: "grammar, punctuation + spelling"),
-    Mode(id: 3, name: "Improve Writing", detail: "tighter, clearer · same meaning"),
-    Mode(id: 4, name: "Slack",          detail: "succinct · warm · lowercase"),
-    Mode(id: 5, name: "Email",          detail: "polished · ends with cheers"),
-    Mode(id: 6, name: "Report",         detail: "notion-formatted · layered"),
-    Mode(id: 7, name: "Bullet Points",  detail: "scannable · discrete ideas"),
-    Mode(id: 8, name: "Improve Prompt", detail: "rewrite for an LLM"),
-    Mode(id: 9, name: "Custom...",      detail: "type your own instruction", isCustom: true),
-    Mode(id: 0, name: "Cancel",         detail: "leave text unchanged",       isCancel: true),
-]
+/// All modes the picker should render, in display order. Loaded once at
+/// launch via `Modes.load(appDir:)` and re-loaded whenever the preferences
+/// window saves changes.
+enum Modes {
+    nonisolated(unsafe) static var all: [Mode] = []
+
+    static func load(appDir: String) {
+        let candidates = [
+            userPath(),
+            defaultPath(appDir: appDir),
+        ]
+        for path in candidates {
+            if let loaded = try? read(from: path), !loaded.isEmpty {
+                all = loaded
+                return
+            }
+        }
+        all = []
+        log("Modes: failed to load from any candidate path")
+    }
+
+    static func userPath() -> String {
+        (NSHomeDirectory() as NSString)
+            .appendingPathComponent(".text-refiner/modes.json")
+    }
+
+    static func defaultPath(appDir: String) -> String {
+        (appDir as NSString).appendingPathComponent("config/modes.default.json")
+    }
+
+    static func save(_ modes: [Mode]) throws {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let data = try encoder.encode(modes)
+
+        let url = URL(fileURLWithPath: userPath())
+        try FileManager.default.createDirectory(
+            at: url.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        try data.write(to: url, options: .atomic)
+        all = modes
+    }
+
+    private static func read(from path: String) throws -> [Mode] {
+        let data = try Data(contentsOf: URL(fileURLWithPath: path))
+        return try JSONDecoder().decode([Mode].self, from: data)
+    }
+}

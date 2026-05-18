@@ -12,23 +12,34 @@ from refiner.prompts import get_prompt
 from utils.history import save_entry
 
 
-CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config", "config.json")
+USER_CONFIG_PATH = os.path.expanduser("~/.text-refiner/config.json")
+DEFAULT_CONFIG_PATH = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    "config",
+    "config.json",
+)
 
 DEFAULT_CONFIG = {
-    "model": "claude-sonnet-4-5",
+    "llm_provider": "anthropic",
+    "model": "claude-sonnet-4-6",
     "max_tokens": 1024,
-    "timeout_seconds": 15,
+    "timeout_seconds": 45,
     "save_history": True,
     "history_limit": 50,
 }
 
 
 def load_config() -> dict:
-    try:
-        with open(CONFIG_PATH) as f:
-            return {**DEFAULT_CONFIG, **json.load(f)}
-    except Exception:
-        return DEFAULT_CONFIG.copy()
+    config = DEFAULT_CONFIG.copy()
+    for path in (DEFAULT_CONFIG_PATH, USER_CONFIG_PATH):
+        try:
+            with open(path, encoding="utf-8") as fh:
+                config.update(json.load(fh))
+        except FileNotFoundError:
+            pass
+        except Exception:
+            pass
+    return config
 
 
 def main() -> int:

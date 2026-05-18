@@ -10,8 +10,18 @@ PLIST_PATH="$HOME/Library/LaunchAgents/com.textrefiner.plist"
 LOG_PATH="$INSTALL_DIR/text-refiner.log"
 NATIVE_BIN="$INSTALL_DIR/TextRefinerNative"
 
-# 1. Virtual environment
+# 1. Virtual environment + user data
 mkdir -p "$INSTALL_DIR" "$HOME/Library/LaunchAgents"
+
+# Seed user-editable config + modes on first install. Existing files are
+# preserved so a `git pull && setup.sh` doesn't overwrite local edits.
+if [ ! -f "$INSTALL_DIR/config.json" ]; then
+  cp "$APP_DIR/config/config.json" "$INSTALL_DIR/config.json"
+fi
+if [ ! -f "$INSTALL_DIR/modes.json" ]; then
+  cp "$APP_DIR/config/modes.default.json" "$INSTALL_DIR/modes.json"
+fi
+
 python3 -m venv "$ENV_DIR"
 source "$ENV_DIR/bin/activate"
 

@@ -34,8 +34,8 @@ enum Picker {
     static func chooseMode() -> PickerChoice? {
         let controller = ChoiceController()
 
-        let listHeight = CGFloat(modes.count) * Metrics.rowHeight
-            + CGFloat(modes.count - 1) * Metrics.rowSpacing
+        let listHeight = CGFloat(Modes.all.count) * Metrics.rowHeight
+            + CGFloat(Modes.all.count - 1) * Metrics.rowSpacing
         let totalHeight = Metrics.topInset + Metrics.headerHeight + listHeight + Metrics.bottomInset
 
         let panel = makePanel(width: Metrics.panelWidth, height: totalHeight)
@@ -181,7 +181,7 @@ enum Picker {
     private static func addRows(to content: NSView, controller: ChoiceController, totalHeight: CGFloat) {
         var y = totalHeight - Metrics.topInset - Metrics.headerHeight - Metrics.rowHeight
 
-        for mode in modes {
+        for mode in Modes.all {
             let row = makeRow(mode: mode, controller: controller, y: y)
             content.addSubview(row)
             y -= Metrics.rowHeight + Metrics.rowSpacing
@@ -311,7 +311,7 @@ final class ChoiceController: NSObject {
     weak var panel: NSPanel?
 
     @objc func choose(_ sender: NSButton) {
-        guard let mode = modes.first(where: { $0.id == sender.tag }) else {
+        guard let mode = Modes.all.first(where: { $0.id == sender.tag }) else {
             close()
             return
         }

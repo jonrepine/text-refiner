@@ -5,17 +5,25 @@ import ApplicationServices
 /// `DoubleTapDetector`, `Selection`, `Picker`, and `RefinerHelper`.
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private let helper: RefinerHelper
+    private let appDir: String
     private var detector: DoubleTapDetector!
+    private var menuBar: MenuBar!
+    private var preferences: PreferencesWindowController!
     private var isProcessing = false
     private var lastRefinedText: String?
 
-    init(helper: RefinerHelper) {
+    init(helper: RefinerHelper, appDir: String) {
         self.helper = helper
+        self.appDir = appDir
         super.init()
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+
+        Modes.load(appDir: appDir)
+        preferences = PreferencesWindowController(appDir: appDir)
+        menuBar = MenuBar(prefsController: preferences)
 
         detector = DoubleTapDetector { [weak self] in
             self?.trigger()
@@ -24,6 +32,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let trusted = AXIsProcessTrusted()
         log("Accessibility trust: \(trusted ? "YES" : "NO — toggle this binary off/on in System Settings → Privacy & Security → Accessibility")")
+        log("Loaded \(Modes.all.count) modes from disk")
         log("Text Refiner native daemon running. Double-tap Right Option over selected text to refine.")
     }
 
@@ -123,6 +132,6 @@ let scriptPath = "\(appDir)/refiner_cli.py"
 
 let helper = RefinerHelper(pythonPath: pythonPath, scriptPath: scriptPath)
 let app = NSApplication.shared
-let delegate = AppDelegate(helper: helper)
+let delegate = AppDelegate(helper: helper, appDir: appDir)
 app.delegate = delegate
 app.run()
