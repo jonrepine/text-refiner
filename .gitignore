@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
+
+# Build artefacts
+/tmp/
+*.o
+
+# Logs
+*.log
