@@ -83,4 +83,12 @@ final class MenuBar: NSObject {
     @objc private func quit() {
         NSApp.terminate(nil)
     }
+
+    /// Defensive: dismiss our status menu before showing the picker. macOS
+    /// will sometimes leave the dropdown tracked if the user just opened
+    /// (and didn't dismiss) the menu before triggering the shortcut, which
+    /// caused both menus to compete for input.
+    func dismissMenu() {
+        statusItem.menu?.cancelTracking()
+    }
 }

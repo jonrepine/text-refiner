@@ -42,6 +42,7 @@ xcrun swiftc $APP_DIR/native/*.swift \
   -framework AppKit \
   -framework ApplicationServices \
   -framework Carbon \
+  -framework IOKit \
   -o "$BUILD_BUNDLE/Contents/MacOS/TextRefiner"
 
 cp "$APP_DIR/refiner_cli.py" "$BUILD_BUNDLE/Contents/Resources/"

@@ -9,6 +9,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var detector: DoubleTapDetector!
     private var menuBar: MenuBar!
     private var preferences: PreferencesWindowController!
+    private var onboarding: OnboardingWindowController?
     private var isProcessing = false
     private var lastRefinedText: String?
 
@@ -35,12 +36,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         log("Accessibility trust: \(trusted ? "YES" : "NO — toggle this binary off/on in System Settings → Privacy & Security → Accessibility")")
         log("Loaded \(Modes.all.count) modes from disk")
         log("Text Refiner native daemon running. Double-tap Right Option over selected text to refine.")
+
+        if OnboardingWindowController.shouldShow() {
+            log("First run detected — showing onboarding window")
+            onboarding = OnboardingWindowController(prefsController: preferences)
+            onboarding?.showWindow(nil)
+        }
     }
 
     /// Entry point fired by the double-tap detector.
     private func trigger() {
         guard !isProcessing else { return }
         isProcessing = true
+
+        // If our menu bar item happens to have an open menu, dismiss it so
+        // it doesn't compete with the picker for input.
+        menuBar?.dismissMenu()
 
         let sourceApp = NSWorkspace.shared.frontmostApplication
         log("Trigger from \(sourceApp?.localizedName ?? "unknown")")
@@ -153,7 +164,7 @@ if let bundleId = Bundle.main.bundleIdentifier {
         $0.bundleIdentifier == bundleId && $0.processIdentifier != getpid()
     }
     if !others.isEmpty {
-        log("Another instance is already running, exiting.")
+        log("Another instance (pid=\(others.first!.processIdentifier)) is already running. Exiting.")
         exit(0)
     }
 }
@@ -161,6 +172,14 @@ if let bundleId = Bundle.main.bundleIdentifier {
 let scriptPath = "\(appDir)/refiner_cli.py"
 let helper = RefinerHelper(pythonPath: pythonPath, scriptPath: scriptPath)
 let app = NSApplication.shared
-let delegate = AppDelegate(helper: helper, appDir: appDir)
-app.delegate = delegate
+
+// Hold the delegate strongly. `NSApp.delegate` is `weak` in AppKit, so a
+// local `let` here can be released by the optimizer the moment we hand it
+// off, leaving `applicationDidFinishLaunching` to never fire. Park it in a
+// module-level container.
+enum DelegateBox {
+    static var instance: AppDelegate?
+}
+DelegateBox.instance = AppDelegate(helper: helper, appDir: appDir)
+app.delegate = DelegateBox.instance
 app.run()

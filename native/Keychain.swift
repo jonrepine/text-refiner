@@ -8,12 +8,18 @@ enum Keychain {
     private static let service = "text-refiner"
 
     static func read(account: String) -> String? {
+        // `kSecUseAuthenticationUI: kSecUseAuthenticationUIFail` tells the
+        // Security framework to return an error instead of putting up a
+        // confirmation prompt when our app isn't on the item's ACL. Without
+        // this, the call blocks forever in an accessory-policy daemon
+        // because the prompt has no visible window to attach to.
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
             kSecMatchLimit as String: kSecMatchLimitOne,
             kSecReturnData as String: true,
+            kSecUseAuthenticationUI as String: kSecUseAuthenticationUIFail,
         ]
 
         var result: AnyObject?
@@ -21,7 +27,13 @@ enum Keychain {
         guard status == errSecSuccess,
               let data = result as? Data,
               let string = String(data: data, encoding: .utf8)
-        else { return nil }
+        else {
+            if status == errSecInteractionNotAllowed || status == errSecAuthFailed {
+                log("Keychain.read: existing item for \(account) is not accessible to this build. " +
+                    "Delete and re-enter via Preferences.")
+            }
+            return nil
+        }
         return string
     }
 
