@@ -105,7 +105,7 @@ enum Picker {
 
     static func showStatus(_ text: String) {
         closeStatus()
-        let width: CGFloat = 240
+        let width: CGFloat = 260
         let height: CGFloat = 44
         let screen = NSScreen.main ?? NSScreen.screens[0]
         let frame = screen.visibleFrame
@@ -120,9 +120,19 @@ enum Picker {
         configureOverlay(panel)
 
         let content = makeMaterialView(frame: NSRect(x: 0, y: 0, width: width, height: height))
+
+        // Small native spinner. Lightweight, system-rendered, follows the
+        // user's appearance automatically.
+        let spinner = NSProgressIndicator(frame: NSRect(x: 16, y: (height - 16) / 2, width: 16, height: 16))
+        spinner.style = .spinning
+        spinner.controlSize = .small
+        spinner.isIndeterminate = true
+        spinner.startAnimation(nil)
+        content.addSubview(spinner)
+
         let textLabel = makeLabel(text, size: 12, weight: .medium, color: .labelColor)
-        textLabel.alignment = .center
-        textLabel.frame = NSRect(x: 10, y: 14, width: width - 20, height: 16)
+        textLabel.alignment = .left
+        textLabel.frame = NSRect(x: 40, y: 14, width: width - 56, height: 16)
         content.addSubview(textLabel)
 
         panel.contentView = content

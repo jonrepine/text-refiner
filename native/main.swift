@@ -20,6 +20,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+        StandardMenu.install()
 
         Modes.load(appDir: appDir)
         preferences = PreferencesWindowController(appDir: appDir)
